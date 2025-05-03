@@ -11,14 +11,10 @@ from dynamic_watchlist_lib.metrics import (
     calculate_pivots,
     detect_volume_surge,
 )
-from dynamic_watchlist_lib.sector_mapping import (
-    get_sector_deviation,
-)
-from dynamic_watchlist_lib.news_events import (
-    get_recent_news,
-    get_corporate_actions,
-)
+from dynamic_watchlist_lib.sector_mapping import get_sector_deviation
+from dynamic_watchlist_lib.news_events import get_recent_news, get_corporate_actions
 from dynamic_watchlist_lib.utils import now_ist
+from streamlit_app.utils_streamlit import display_metrics
 
 # Page config
 st.set_page_config(page_title="Dynamic Watchlist", layout="wide")
@@ -40,10 +36,10 @@ default_symbols = [
     "TVSMOTOR"
 ]
 
-# Multi-select widget
-def_watch = [s for s in default_symbols if s in all_symbols]
+# Multi-select widget for watchlist
+selected = [s for s in default_symbols if s in all_symbols]
 watchlist = st.sidebar.multiselect(
-    "Select stocks to monitor", all_symbols, default=def_watch
+    "Select stocks to monitor", all_symbols, default=selected
 )
 new_sym = st.sidebar.text_input("Add new symbol (exact)")
 if st.sidebar.button("Add to Watchlist"):
@@ -51,14 +47,14 @@ if st.sidebar.button("Add to Watchlist"):
     if sym and sym in all_symbols and sym not in watchlist:
         watchlist.append(sym)
         st.sidebar.success(f"{sym} added!")
-    elif sym not in all_symbols:
+    elif sym and sym not in all_symbols:
         st.sidebar.error(f"{sym} not found in instrument map")
 
 # Last update timestamp
 st.sidebar.markdown(f"**Last update:** {now_ist().strftime('%d-%b-%Y %H:%M:%S')} IST")
 
-# Build metrics table
-rows = []
+# Build metrics rows
+data_rows = []
 for sym in watchlist:
     try:
         df_intra = fetch_intraday_ohlc(sym)
@@ -69,7 +65,7 @@ for sym in watchlist:
         sect_dev = get_sector_deviation(sym)
         fut_oi = fetch_futures_oi(sym)
         ltp = float(df_intra['close'].iloc[-1]) if not df_intra.empty else None
-        rows.append({
+        data_rows.append({
             'Symbol': sym,
             'LTP': ltp,
             'VWAP': vwap,
@@ -83,16 +79,16 @@ for sym in watchlist:
             'Fut OI': fut_oi,
         })
     except Exception as e:
-        rows.append({'Symbol': sym, 'Error': str(e)})
+        data_rows.append({'Symbol': sym, 'Error': str(e)})
 
-df = pd.DataFrame(rows).set_index('Symbol')
-# Format and display
-fmt = {col: '{:.2f}' for col in ['LTP','VWAP','Pivot','S1','S2','R1','R2','Sector Dev (%)']}
-st.subheader("Live Metrics")
-st.dataframe(df.style.format(fmt))
+# Display metrics table with consistent styling
+metrics_df = pd.DataFrame(data_rows).set_index('Symbol')
+display_metrics(metrics_df)
 
-# News and Events section
-news_count = st.sidebar.slider("Number of news headlines", min_value=1, max_value=10, value=5)
+# News & Corporate Events section
+news_count = st.sidebar.slider(
+    "Number of news headlines", min_value=1, max_value=10, value=5
+)
 st.markdown("---")
 st.header("News & Corporate Events")
 for sym in watchlist:

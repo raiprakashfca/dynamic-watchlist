@@ -18,3 +18,7 @@ dependencies = [
   "pytz>=2021.1",
   "requests>=2.25.1"
 ]
+
+[tool.setuptools.packages.find]
+include = ["dynamic_watchlist_lib*"]
+exclude = ["streamlit_app", "tests"]

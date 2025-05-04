@@ -1,6 +1,6 @@
 import streamlit as st
 
-# Must be the first Streamlit command
+# Set page config must be first Streamlit command
 st.set_page_config(page_title="Dynamic Watchlist", layout="wide")
 st.title("📊 Dynamic Watchlist Dashboard")
 
@@ -34,7 +34,7 @@ symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
 # Show last update time
 st.sidebar.write("Last update (IST):", now_ist().strftime("%Y-%m-%d %H:%M:%S"))
 
-# Build and display the metrics table
+# Build metrics table
 rows = []
 for sym in symbol_list:
     try:

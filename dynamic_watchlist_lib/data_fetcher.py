@@ -4,7 +4,7 @@ dynamic_watchlist_lib/data_fetcher.py
 Fetches market data, futures open interest, and FT News headlines using KiteConnect and Google Sheets for dynamic tokens.
 """
 
-from typing import Optional
+from typing import Optional, Dict
 import json
 import gspread
 import requests
@@ -13,7 +13,7 @@ from kiteconnect import KiteConnect
 from .config import (
     KITE_API_KEY,
     KITE_API_SECRET,
-    get_kite_access_token,
+    KITE_ACCESS_TOKEN,
     FT_NEWS_API_KEY,
     FT_NEWS_ENDPOINT,
     GSHEET_CREDENTIALS_JSON,
@@ -24,10 +24,19 @@ from .utils import cache_ttl, now_ist
 
 def get_kite_client() -> KiteConnect:
     """Initialize and return a KiteConnect client with dynamic access token."""
-    access_token = get_kite_access_token()
     client = KiteConnect(api_key=KITE_API_KEY)
-    client.set_access_token(access_token)
+    client.set_access_token(KITE_ACCESS_TOKEN)
     return client
+
+
+@cache_ttl(ttl=600)
+def get_instrument_map() -> Dict[str, int]:
+    """
+    Fetch and return a mapping from NSE trading symbols to instrument tokens.
+    """
+    client = get_kite_client()
+    instruments = client.instruments("NSE")
+    return {inst["tradingsymbol"]: inst["instrument_token"] for inst in instruments}
 
 
 @cache_ttl(ttl=60)
@@ -36,12 +45,13 @@ def fetch_intraday_ohlc(symbol: str, interval: str = "5minute", duration_days: i
     Fetch intraday OHLC for a given symbol.
     Returns a DataFrame indexed by IST datetime with columns ['open', 'high', 'low', 'close', 'volume'].
     """
-    client = get_kite_client()
-    ltp = client.ltp(f"NSE:{symbol}").get(f"NSE:{symbol}", {})
-    instrument_token = ltp.get("instrument_token")
+    token_map = get_instrument_map()
+    instrument_token = token_map.get(symbol)
+    if instrument_token is None:
+        raise ValueError(f"Symbol {symbol} not found in instrument map")
     to_ts = now_ist()
     from_ts = to_ts - pd.Timedelta(days=duration_days)
-    data = client.historical_data(instrument_token, from_ts, to_ts, interval)
+    data = get_kite_client().historical_data(instrument_token, from_ts, to_ts, interval)
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date")
@@ -54,12 +64,13 @@ def fetch_daily_ohlc(symbol: str, duration_days: int = 5) -> pd.DataFrame:
     """
     Fetch daily OHLC for a given symbol for the past duration_days.
     """
-    client = get_kite_client()
-    ltp = client.ltp(f"NSE:{symbol}").get(f"NSE:{symbol}", {})
-    instrument_token = ltp.get("instrument_token")
+    token_map = get_instrument_map()
+    instrument_token = token_map.get(symbol)
+    if instrument_token is None:
+        raise ValueError(f"Symbol {symbol} not found in instrument map")
     to_ts = now_ist()
     from_ts = to_ts - pd.Timedelta(days=duration_days)
-    data = client.historical_data(instrument_token, from_ts, to_ts, "day")
+    data = get_kite_client().historical_data(instrument_token, from_ts, to_ts, "day")
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"]).dt.date
     df = df.set_index("date")

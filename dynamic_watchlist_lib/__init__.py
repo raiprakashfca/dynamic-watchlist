@@ -4,7 +4,7 @@ dynamic_watchlist_lib/__init__.py
 Package initialization.
 """
 
-from .config import KITE_API_KEY, KITE_API_SECRET, KITE_ACCESS_TOKEN, IST
+from .config import KITE_API_KEY, KITE_API_SECRET, get_kite_access_token, IST
 from .utils import cache_ttl, now_ist
 from .data_fetcher import (
     get_kite_client,

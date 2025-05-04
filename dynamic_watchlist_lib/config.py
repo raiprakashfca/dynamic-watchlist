@@ -32,5 +32,8 @@ def get_kite_access_token() -> str:
         return sheet.acell("C1").value
     return os.getenv("Zerodha_Access_Token", "")
 
+# Alias for easy import
+KITE_ACCESS_TOKEN = get_kite_access_token()
+
 # Timezone for all datetime operations
 IST = "Asia/Kolkata"

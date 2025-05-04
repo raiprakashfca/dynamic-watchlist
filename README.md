@@ -10,7 +10,6 @@ A Python library and Streamlit app for live intraday watchlists with support/res
 - Volume surge detection
 - Sector deviation analysis against NIFTY indices
 - Real-time Futures Open Interest
-- Live FT News headlines and corporate events
 
 ## Installation
 
@@ -24,7 +23,7 @@ pip install -e .
 ### Library
 
 ```python
-from dynamic_watchlist_lib import data_fetcher, metrics, sector_mapping, news_events
+from dynamic_watchlist_lib import data_fetcher, metrics, sector_mapping
 ```
 
 ### Streamlit App
@@ -39,8 +38,6 @@ Zerodha_API_Key = "YOUR_API_KEY"
 Zerodha_API_Secret = "YOUR_API_SECRET"
 GSHEET_CREDENTIALS_JSON = "YOUR_GOOGLE_SERVICE_ACCOUNT_JSON"
 ZERODHA_SHEET_ID = "YOUR_SHEET_ID"
-FT_News_API_Key = "YOUR_FT_NEWS_KEY"
-FT_News_Endpoint = "YOUR_FT_NEWS_ENDPOINT"
 ```
 
 ## Contributing

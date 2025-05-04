@@ -4,8 +4,7 @@ Streamlit UI helper functions for styling and displaying tables in the watchlist
 import pandas as pd
 import streamlit as st
 
-
-def style_metrics(df: pd.DataFrame):
+def style_metrics(df):
     """
     Apply styling to the metrics DataFrame:
     - Highlight volume surge rows
@@ -34,8 +33,7 @@ def style_metrics(df: pd.DataFrame):
 
     return styler
 
-
-def display_metrics(df: pd.DataFrame):
+def display_metrics(df):
     """
     Render the styled metrics DataFrame in Streamlit.
     """

@@ -1,131 +1,113 @@
 """
-Data fetchers for market data and news for dynamic_watchlist_lib.
-"""
-import pandas as pd
-import requests
-from kiteconnect import KiteConnect
-from datetime import datetime
+dynamic_watchlist_lib/data_fetcher.py
 
+Fetches market data, futures open interest, and FT News headlines using KiteConnect and Google Sheets for dynamic tokens.
+"""
+
+from typing import Optional
+import json
+import gspread
+import requests
+import pandas as pd
+from kiteconnect import KiteConnect
 from .config import (
     KITE_API_KEY,
     KITE_API_SECRET,
-    KITE_ACCESS_TOKEN,
+    get_kite_access_token,
     FT_NEWS_API_KEY,
-    FT_NEWS_SEARCH_URL,
+    FT_NEWS_ENDPOINT,
+    GSHEET_CREDENTIALS_JSON,
+    ZERODHA_SHEET_ID,
 )
 from .utils import cache_ttl, now_ist
 
 
 def get_kite_client() -> KiteConnect:
-    """
-    Initialize and return a KiteConnect client using configured credentials.
-    """
-    kite = KiteConnect(api_key=KITE_API_KEY)
-    kite.set_access_token(KITE_ACCESS_TOKEN)
-    return kite
+    """Initialize and return a KiteConnect client with dynamic access token."""
+    access_token = get_kite_access_token()
+    client = KiteConnect(api_key=KITE_API_KEY)
+    client.set_access_token(access_token)
+    return client
 
 
-@cache_ttl(24 * 3600)
-def get_instrument_map() -> dict[str, int]:
+@cache_ttl(ttl=60)
+def fetch_intraday_ohlc(symbol: str, interval: str = "5minute", duration_days: int = 1) -> pd.DataFrame:
     """
-    Fetch and cache mapping of NSE tradingsymbol to instrument_token.
+    Fetch intraday OHLC for a given symbol.
+    Returns a DataFrame indexed by IST datetime with columns ['open', 'high', 'low', 'close', 'volume'].
     """
-    kite = get_kite_client()
-    instruments = kite.instruments(exchange="NSE")
-    return {inst["tradingsymbol"]: inst["instrument_token"] for inst in instruments}
-
-
-@cache_ttl(60)
-def fetch_intraday_ohlc(symbol: str, interval: str = "5minute") -> pd.DataFrame:
-    """
-    Fetch recent intraday OHLC data for a given symbol.
-    Returns a DataFrame indexed by timestamp (IST).
-    """
-    inst_map = get_instrument_map()
-    token = inst_map.get(symbol)
-    if not token:
-        raise ValueError(f"Symbol {symbol} not found in instrument map")
-
-    kite = get_kite_client()
-    start = now_ist().replace(hour=9, minute=15, second=0, microsecond=0)
-    end = now_ist()
-    data = kite.historical(token, from_date=start, to_date=end, interval=interval)
+    client = get_kite_client()
+    ltp = client.ltp(f"NSE:{symbol}").get(f"NSE:{symbol}", {})
+    instrument_token = ltp.get("instrument_token")
+    to_ts = now_ist()
+    from_ts = to_ts - pd.Timedelta(days=duration_days)
+    data = client.historical_data(instrument_token, from_ts, to_ts, interval)
     df = pd.DataFrame(data)
-    df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(None)
-    df.set_index("date", inplace=True)
-    return df
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date")
+    df.index = df.index.tz_localize("UTC").tz_convert("Asia/Kolkata")
+    return df[["open", "high", "low", "close", "volume"]]
 
 
-@cache_ttl(86400)
-def fetch_daily_ohlc(symbol: str) -> pd.DataFrame:
+@cache_ttl(ttl=600)
+def fetch_daily_ohlc(symbol: str, duration_days: int = 5) -> pd.DataFrame:
     """
-    Fetch previous day OHLC data for a given symbol.
+    Fetch daily OHLC for a given symbol for the past duration_days.
     """
-    inst_map = get_instrument_map()
-    token = inst_map.get(symbol)
-    if not token:
-        raise ValueError(f"Symbol {symbol} not found in instrument map")
-
-    kite = get_kite_client()
-    today = now_ist().date()
-    yesterday = today - pd.Timedelta(days=1)
-    data = kite.historical(token, from_date=yesterday, to_date=today, interval="day")
+    client = get_kite_client()
+    ltp = client.ltp(f"NSE:{symbol}").get(f"NSE:{symbol}", {})
+    instrument_token = ltp.get("instrument_token")
+    to_ts = now_ist()
+    from_ts = to_ts - pd.Timedelta(days=duration_days)
+    data = client.historical_data(instrument_token, from_ts, to_ts, "day")
     df = pd.DataFrame(data)
-    df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(None)
-    df.set_index("date", inplace=True)
-    return df
+    df["date"] = pd.to_datetime(df["date"]).dt.date
+    df = df.set_index("date")
+    return df[["open", "high", "low", "close", "volume"]]
 
 
-@cache_ttl(60)
-def fetch_futures_oi(symbol: str) -> int | None:
+@cache_ttl(ttl=30)
+def fetch_futures_oi(symbol: str) -> Optional[int]:
     """
-    Fetch real-time Futures Open Interest for the nearest futures contract of a given symbol.
+    Fetch the current open interest for the nearest futures contract of the given symbol.
+    Returns None if not available.
     """
-    inst_map = get_instrument_map()
-    # Assumes symbol itself refers to a futures contract tradingsymbol
-    token = inst_map.get(symbol)
-    if not token:
-        raise ValueError(f"Symbol {symbol} not found in instrument map")
+    client = get_kite_client()
+    instruments = client.instruments("NSE")
+    futures = [
+        inst for inst in instruments
+        if inst.get("tradingsymbol", "").startswith(symbol) and inst.get("segment") == "NFO-FUT"
+    ]
+    if not futures:
+        return None
+    futures.sort(key=lambda x: pd.to_datetime(x.get("expiry")))
+    nearest = futures[0]
+    ltp = client.ltp(f"NSE:{nearest['tradingsymbol']}").get(f"NSE:{nearest['tradingsymbol']}", {})
+    return ltp.get("oi")
 
-    kite = get_kite_client()
-    ltp_data = kite.ltp([token])
-    token_data = ltp_data.get(str(token), {})
-    return token_data.get("oi")
 
-
-@cache_ttl(300)
-def fetch_latest_news(query: str, count: int = 5) -> list[dict]:
+@cache_ttl(ttl=300)
+def fetch_latest_news(count: int = 5) -> list[dict]:
     """
-    Fetch latest news headlines from FT News API matching the query string.
-    Returns a list of result dicts containing title, source, and timestamp.
+    Fetch the latest FT News headlines.
     """
-    if not FT_NEWS_API_KEY:
+    if not FT_NEWS_API_KEY or not FT_NEWS_ENDPOINT:
         return []
-
-    headers = {"X-Api-Key": FT_NEWS_API_KEY, "Content-Type": "application/json"}
-    payload = {
-        "queryString": query,
-        "resultContext": {"maxResults": count},
-    }
-    resp = requests.post(FT_NEWS_SEARCH_URL, json=payload, headers=headers)
-    resp.raise_for_status()
-    data = resp.json()
-    # Extract and return simplified news items
-    items = []
-    for r in data.get("results", []):
-        items.append({
-            "title": r.get("title", {}).get("title"),
-            "pubDate": r.get("lifecycle", {}).get("firstPublishedDateTime"),
-            "source": r.get("location", {}).get("uri"),
-        })
-    return items
+    response = requests.get(
+        FT_NEWS_ENDPOINT,
+        params={"apiKey": FT_NEWS_API_KEY, "count": count},
+        timeout=10,
+    )
+    if response.status_code != 200:
+        return []
+    data = response.json()
+    return data.get("articles", [])
 
 
-@cache_ttl(300)
+@cache_ttl(ttl=300)
 def fetch_corporate_events(symbol: str) -> list[dict]:
     """
-    Placeholder for corporate actions (dividends, results, ex-dates).
-    FT API corporate endpoint can be integrated here.
+    Stub - fetch corporate actions for symbol.
     """
-    # TODO: Integrate FT corporate actions API
+    # Placeholder for future FT endpoint integration
     return []

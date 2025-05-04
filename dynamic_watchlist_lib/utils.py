@@ -1,52 +1,46 @@
 """
-Utility functions for dynamic_watchlist_lib.
-Consistent timezone handling (IST) and common helpers.
+dynamic_watchlist_lib/utils.py
+
+Utility functions: datetime conversion and caching.
 """
-import os
+
 import time
-from functools import wraps
-from datetime import datetime, timedelta
+from typing import Any, Callable
+import functools
+import datetime
 import pytz
-from .config import timezone as TZ
 
-# IST timezone object
-IST = pytz.timezone(TZ)
+from .config import IST
 
+# Timezone object for IST
+TZ = pytz.timezone(IST)
 
-def now_ist() -> datetime:
-    """
-    Returns the current datetime in IST timezone.
-    """
-    return datetime.now(IST)
+def now_ist() -> datetime.datetime:
+    """Return current datetime in IST timezone."""
+    return datetime.datetime.now(tz=TZ)
 
-
-def to_ist(dt: datetime) -> datetime:
-    """
-    Convert a UTC or naive datetime to IST timezone.
-    """
+def to_ist(dt: datetime.datetime) -> datetime.datetime:
+    """Convert a datetime (naive or with tzinfo) to IST timezone."""
     if dt.tzinfo is None:
-        # assume dt is UTC if naive
         dt = dt.replace(tzinfo=pytz.utc)
-    return dt.astimezone(IST)
+    return dt.astimezone(TZ)
 
-
-def cache_ttl(ttl_seconds: int):
+def cache_ttl(ttl: int):
     """
-    Decorator to cache function results for a given TTL (in seconds).
+    Decorator to cache function results for ttl seconds.
     """
-    def decorator(fn):
+    def decorator(func: Callable[..., Any]):
         cache = {}
-
-        @wraps(fn)
-        def wrapped(*args, **kwargs):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
             key = (args, tuple(sorted(kwargs.items())))
-            result, timestamp = cache.get(key, (None, None))
-            now = time.time()
-            if result is None or (now - timestamp) > ttl_seconds:
-                result = fn(*args, **kwargs)
-                cache[key] = (result, now)
+            now_ts = time.time()
+            if key in cache:
+                ts, value = cache[key]
+                if now_ts - ts < ttl:
+                    return value
+            result = func(*args, **kwargs)
+            cache[key] = (now_ts, result)
             return result
-
-        return wrapped
-
+        return wrapper
     return decorator

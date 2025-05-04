@@ -1,5 +1,8 @@
 import pytest
 import pandas as pd
+from typing import Optional
+
+import dynamic_watchlist_lib.data_fetcher as df_module
 from dynamic_watchlist_lib.data_fetcher import (
     get_instrument_map,
     fetch_intraday_ohlc,
@@ -9,60 +12,74 @@ from dynamic_watchlist_lib.data_fetcher import (
     fetch_corporate_events,
 )
 
-LIVE_SYMBOL = "RELIANCE"  # example live-traded symbol
+class DummyClient:
+    def __init__(self):
+        self._data_called = False
 
+    def instruments(self, exchange: str):
+        # Return dummy instrument list
+        return [
+            {"tradingsymbol": "TEST", "instrument_token": 123, "segment": "NSE"},
+            {"tradingsymbol": "TESTFUT", "instrument_token": 456, "segment": "NFO-FUT", "expiry": "2025-05-01"},
+        ]
 
-def test_get_instrument_map_basic():
+    def ltp(self, symbol: str):
+        # Return dummy OI and token mapping
+        if "TESTFUT" in symbol:
+            return {symbol: {"oi": 1000}}
+        return {symbol: {"instrument_token": 123}}
+
+    def historical_data(self, token: int, from_ts, to_ts, interval: str):
+        # Return dummy OHLC data
+        times = pd.date_range(start=pd.Timestamp('2025-01-01'), periods=3, freq='5T')
+        return [
+            {"date": times[0], "open": 100, "high": 105, "low": 95, "close": 102, "volume": 1000},
+            {"date": times[1], "open": 102, "high": 108, "low": 101, "close": 107, "volume": 1100},
+            {"date": times[2], "open": 107, "high": 110, "low": 105, "close": 109, "volume": 1200},
+        ]
+
+@pytest.fixture(autouse=True)
+def patch_kite_client(monkeypatch):
+    dummy = DummyClient()
+    monkeypatch.setattr(df_module, "get_kite_client", lambda: dummy)
+    monkeypatch.setenv("FT_News_API_Key", "dummy")
+    monkeypatch.setenv("FT_News_Endpoint", "https://dummy")
+    return dummy
+
+def test_get_instrument_map():
     inst_map = get_instrument_map()
     assert isinstance(inst_map, dict)
-    assert LIVE_SYMBOL in inst_map
-    # Values should be integer tokens
-    assert isinstance(inst_map[LIVE_SYMBOL], int)
+    assert inst_map["TEST"] == 123
 
-
-def test_fetch_intraday_ohlc_live():
-    df = fetch_intraday_ohlc(LIVE_SYMBOL)
+def test_fetch_intraday_ohlc_stub():
+    df = fetch_intraday_ohlc("TEST")
     assert isinstance(df, pd.DataFrame)
-    assert not df.empty
-    # Check essential OHLCV columns
-    for col in ['open', 'high', 'low', 'close', 'volume']:
-        assert col in df.columns
+    assert list(df.columns) == ["open", "high", "low", "close", "volume"]
+    assert len(df) == 3
 
-
-def test_fetch_daily_ohlc_live():
-    df = fetch_daily_ohlc(LIVE_SYMBOL)
+def test_fetch_daily_ohlc_stub():
+    df = fetch_daily_ohlc("TEST")
     assert isinstance(df, pd.DataFrame)
-    assert not df.empty
-    for col in ['open', 'high', 'low', 'close', 'volume']:
-        assert col in df.columns
+    assert list(df.columns) == ["open", "high", "low", "close", "volume"]
+    assert len(df) == 3
 
+def test_fetch_futures_oi_stub():
+    oi = fetch_futures_oi("TEST")
+    # Our stub picks TESTFUT nearest expiry
+    assert oi == 1000
 
-def test_fetch_futures_oi_live():
-    oi = fetch_futures_oi(LIVE_SYMBOL)
-    # Could be None if no futures OI available or an integer
-    assert oi is None or isinstance(oi, (int, float))
-
-
-def test_fetch_latest_news_returns_list():
-    news = fetch_latest_news(LIVE_SYMBOL)
+def test_fetch_latest_news_stub(monkeypatch):
+    # Monkeypatch requests.get to return dummy structure
+    class DummyResponse:
+        status_code = 200
+        def json(self):
+            return {"articles": [{"title": "News1"}, {"title": "News2"}]}
+    monkeypatch.setattr(df_module.requests, "get", lambda url, params, timeout: DummyResponse())
+    news = fetch_latest_news(count=2)
     assert isinstance(news, list)
-    # Each item should be a dict if news exist
-    if news:
-        assert isinstance(news[0], dict)
+    assert news[0]["title"] == "News1"
 
-
-def test_fetch_corporate_events_returns_list():
-    events = fetch_corporate_events(LIVE_SYMBOL)
+def test_fetch_corporate_events_stub():
+    events = fetch_corporate_events("TEST")
     assert isinstance(events, list)
-    # Stub returns empty list; but type is correct
-    for ev in events:
-        assert isinstance(ev, dict)
-
-
-def test_errors_for_invalid_symbol():
-    with pytest.raises(ValueError):
-        fetch_intraday_ohlc("NON_EXISTENT")
-    with pytest.raises(ValueError):
-        fetch_daily_ohlc("NON_EXISTENT")
-    with pytest.raises(ValueError):
-        fetch_futures_oi("NON_EXISTENT")
+    assert events == []

@@ -1,12 +1,22 @@
+import os
+import sys
+
+# Ensure the streamlit_app directory is on the path so we can import utils_streamlit
+sys.path.append(os.path.dirname(__file__))
+
 import streamlit as st
 import pandas as pd
+
 from dynamic_watchlist_lib import (
-    fetch_intraday_ohlc, fetch_futures_oi,
-    calculate_vwap, calculate_pivots,
-    detect_volume_surge, get_sector_deviation,
+    fetch_intraday_ohlc,
+    fetch_futures_oi,
+    calculate_vwap,
+    calculate_pivots,
+    detect_volume_surge,
+    get_sector_deviation,
 )
 from dynamic_watchlist_lib.utils import now_ist
-from streamlit_app.utils_streamlit import display_metrics
+from utils_streamlit import display_metrics
 
 st.set_page_config(page_title="Dynamic Watchlist", layout="wide")
 st.title("📊 Dynamic Watchlist Dashboard")
@@ -15,7 +25,10 @@ st.title("📊 Dynamic Watchlist Dashboard")
 st.sidebar.header("Watchlist Settings")
 symbols = st.sidebar.text_area(
     "Enter NSE symbols (comma-separated)",
-    value="ASIANPAINT,BAJAJ-AUTO,BANKBARODA,BPCL,CIPLA,COALINDIA,ICICIBANK,ITC,JSWSTEEL,LT,MARUTI,ONGC,RELIANCE,SBIN,TCS,INFY,CDSL,DRREDDY,JUBLFOOD,POWERGRID,SUNPHARMA,DIVISLAB,TECHM,HEROMOTOCO,HINDUNILVR,TATAPOWER,TITAN,BOSCHLTD,BHARATFORGE,GRASIM,APLAPOLLO,RECLTD,PFC,GLENMARK,TVSMOTOR",
+    value="ASIANPAINT,BAJAJ-AUTO,BANKBARODA,BPCL,CIPLA,COALINDIA,ICICIBANK,ITC,JSWSTEEL,"
+          "LT,MARUTI,ONGC,RELIANCE,SBIN,TCS,INFY,CDSL,DRREDDY,JUBLFOOD,POWERGRID,"
+          "SUNPHARMA,DIVISLAB,TECHM,HEROMOTOCO,HINDUNILVR,TATAPOWER,TITAN,BOSCHLTD,"
+          "BHARATFORGE,GRASIM,APLAPOLLO,RECLTD,PFC,GLENMARK,TVSMOTOR",
     height=200
 )
 symbol_list = [sym.strip().upper() for sym in symbols.split(",") if sym.strip()]
@@ -32,6 +45,7 @@ for sym in symbol_list:
         surge = detect_volume_surge(df_intraday)
         deviation = get_sector_deviation(sym)
         oi = fetch_futures_oi(sym)
+
         data.append({
             "Symbol": sym,
             "VWAP": round(vwap, 2),
@@ -43,7 +57,12 @@ for sym in symbol_list:
             "Futures_OI": oi if oi is not None else "-",
         })
     except Exception as e:
-        data.append({"Symbol": sym, "Error": str(e)})
+        data.append({
+            "Symbol": sym,
+            "Error": str(e)
+        })
 
 df_metrics = pd.DataFrame(data)
+
+# Display the styled table
 display_metrics(df_metrics)

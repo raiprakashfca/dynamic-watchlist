@@ -6,15 +6,25 @@ Centralized configuration for API keys and dynamic token loading.
 
 import os
 import json
-import gspread
+
+# Try to import Streamlit's secrets (in Cloud); otherwise use an empty dict
+try:
+    import streamlit as _st
+    _SECRETS = _st.secrets
+except ImportError:
+    _SECRETS = {}
+
+def _get_secret(name: str) -> str:
+    """Look up name first in st.secrets, then in environment variables."""
+    return _SECRETS.get(name) or os.getenv(name, "")
 
 # Kite Connect credentials
-KITE_API_KEY = os.getenv("Zerodha_API_Key", "")
-KITE_API_SECRET = os.getenv("Zerodha_API_Secret", "")
+KITE_API_KEY    = _get_secret("Zerodha_API_Key")
+KITE_API_SECRET = _get_secret("Zerodha_API_Secret")
 
 # Google Sheet settings for dynamic Zerodha Access Token
-GSHEET_CREDENTIALS_JSON = os.getenv("GSHEET_CREDENTIALS_JSON", "")
-ZERODHA_SHEET_ID = os.getenv("ZERODHA_SHEET_ID", "")
+GSHEET_CREDENTIALS_JSON = _get_secret("GSHEET_CREDENTIALS_JSON")
+ZERODHA_SHEET_ID        = _get_secret("ZERODHA_SHEET_ID")
 
 def get_kite_access_token() -> str:
     """

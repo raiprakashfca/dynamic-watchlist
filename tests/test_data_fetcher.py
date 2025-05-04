@@ -11,7 +11,6 @@ from dynamic_watchlist_lib.data_fetcher import (
     fetch_latest_news,
     fetch_corporate_events,
 )
-import dynamic_watchlist_lib.config as config_module
 
 class DummyClient:
     def __init__(self):
@@ -40,13 +39,13 @@ class DummyClient:
         ]
 
 @pytest.fixture(autouse=True)
-def patch_kite_client(monkeypatch):
+def patch_kite_client_and_news(monkeypatch):
     dummy = DummyClient()
     # Patch Kite client creation
     monkeypatch.setattr(df_module, "get_kite_client", lambda: dummy)
-    # Stub out news API credentials in config
-    monkeypatch.setattr(config_module, "FT_NEWS_API_KEY", "dummy", raising=False)
-    monkeypatch.setattr(config_module, "FT_NEWS_ENDPOINT", "https://dummy", raising=False)
+    # Monkey-patch FT News constants in data_fetcher module to ensure fetch_latest_news runs
+    monkeypatch.setattr(df_module, "FT_NEWS_API_KEY", "dummy", raising=False)
+    monkeypatch.setattr(df_module, "FT_NEWS_ENDPOINT", "https://dummy", raising=False)
     return dummy
 
 def test_get_instrument_map():
@@ -72,7 +71,6 @@ def test_fetch_futures_oi_stub():
     assert oi == 1000
 
 def test_fetch_latest_news_stub(monkeypatch):
-    # Ensure FT_NEWS_API_KEY and ENDPOINT are set in config
     # Monkeypatch requests.get to return dummy structure
     class DummyResponse:
         status_code = 200

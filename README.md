@@ -1,111 +1,52 @@
-# dynamic-watchlist
+[![Python Tests](https://github.com/raiprakashfca/dynamic-watchlist/actions/workflows/python-tests.yml/badge.svg)](https://github.com/raiprakashfca/dynamic-watchlist/actions/workflows/python-tests.yml)
 
-A Python library and Streamlit app for building a **dynamic intraday watchlist** of Indian equities with real‑time metrics:
+# Dynamic Watchlist
 
-* **Support & Resistance** via pivot‑point calculations
-* **VWAP** (Volume‑Weighted Average Price)
-* **Volume Surges** detection
-* **Sector Deviation** vs. NIFTY sector indices
-* **Futures Open Interest** (live)
-* **Timestamped News & Corporate Events** (FT News, dividends, results, ex‑dates)
+A Python library and Streamlit app for live intraday watchlists with support/resistance, VWAP, volume surges, sector deviations, and futures Open Interest.
 
----
+## Features
+- Monitor Support & Resistance levels via pivot points
+- Intraday VWAP calculation
+- Volume surge detection
+- Sector deviation analysis against NIFTY indices
+- Real-time Futures Open Interest
+- Live FT News headlines and corporate events
 
-## 🚀 Features
+## Installation
 
-1. **Modular Library (`dynamic_watchlist_lib`)**
-
-   * Clean wrappers for Zerodha Kite Connect and FT News API
-   * Calculators for VWAP, pivots, volume surges, sector deviation
-   * Configurable caching and timezone‑aware utilities
-
-2. **Streamlit Dashboard (`streamlit_app/watchlist_dashboard.py`)**
-
-   * Select or add tickers on the fly
-   * Auto‑refreshing wide‑format table of live metrics
-   * Sidebar controls for watchlist management and refresh info
-
-3. **Extensible**
-
-   * Easily add new metrics or data sources (e.g., technical indicators)
-   * Plug‑and‑play sector mapping and news/event fetchers
-
-4. **Test Coverage**
-
-   * Unit tests under `tests/` to validate data fetchers and calculations
-
----
-
-## 📋 Prerequisites
-
-* **Python** ≥ 3.8
-* **Zerodha Kite Connect** credentials: API Key, API Secret, Access Token
-* **Financial Times News API** key (optional; for news/events)
-
----
-
-## 🔧 Installation
-
-1. Clone the repo:
-
-   ```bash
-   git clone https://github.com/raiprakashfca/dynamic-watchlist.git
-   cd dynamic-watchlist
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   pip install -r requirements.txt
-   pip install -e .
-   ```
-
-3. Configure your API credentials in Streamlit secrets or environment variables:
-
-   ```toml
-   [secrets]
-   Zerodha_API_Key = "<your_api_key>"
-   Zerodha_API_Secret = "<your_api_secret>"
-   Zerodha_Access_Token = "<your_access_token>"
-
-   # (Optional) Financial Times News API
-   FT_News_API_Key = "<your_ft_key>"
-   ```
-
----
-
-## ▶️ Usage
-
-### As a Python Library
-
-```python
-from dynamic_watchlist_lib.data_fetcher import fetch_intraday_ohlc
-from dynamic_watchlist_lib.metrics import calculate_vwap, calculate_pivot, detect_volume_surge
-
-# Example:
-token = 123456
-df = fetch_intraday_ohlc(token)
-vwap = calculate_vwap(df)
+```bash
+pip install -r requirements.txt
+pip install -e .
 ```
 
-### Run the Streamlit Dashboard
+## Usage
+
+### Library
+
+```python
+from dynamic_watchlist_lib import data_fetcher, metrics, sector_mapping, news_events
+```
+
+### Streamlit App
 
 ```bash
 streamlit run streamlit_app/watchlist_dashboard.py
 ```
 
----
+Ensure your `st.secrets` or environment variables contain:
+```toml
+Zerodha_API_Key = "YOUR_API_KEY"
+Zerodha_API_Secret = "YOUR_API_SECRET"
+GSHEET_CREDENTIALS_JSON = "YOUR_GOOGLE_SERVICE_ACCOUNT_JSON"
+ZERODHA_SHEET_ID = "YOUR_SHEET_ID"
+FT_News_API_Key = "YOUR_FT_NEWS_KEY"
+FT_News_Endpoint = "YOUR_FT_NEWS_ENDPOINT"
+```
 
-## 🤝 Contributing
+## Contributing
 
-1. Fork the repo
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit your changes
-4. Run tests: `pytest`
-5. Open a pull request
+Contributions are welcome! Please open issues or submit pull requests.
 
----
+## License
 
-## 📄 License
-
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+MIT © 2025 Prakash Rai

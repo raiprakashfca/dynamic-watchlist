@@ -1,15 +1,14 @@
 import os
 import sys
 from dynamic_watchlist_lib.config import KITE_API_KEY, KITE_ACCESS_TOKEN
-st.sidebar.write("🔑 API key loaded?", bool(KITE_API_KEY))
-st.sidebar.write("🗝️ Access token loaded?", bool(KITE_ACCESS_TOKEN))
 
 # Ensure the streamlit_app directory is on the path so we can import utils_streamlit
 sys.path.append(os.path.dirname(__file__))
 
 import streamlit as st
 import pandas as pd
-
+st.sidebar.write("🔑 API key loaded?", bool(KITE_API_KEY))
+st.sidebar.write("🗝️ Access token loaded?", bool(KITE_ACCESS_TOKEN))
 from dynamic_watchlist_lib import (
     fetch_intraday_ohlc,
     fetch_futures_oi,

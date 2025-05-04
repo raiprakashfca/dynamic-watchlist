@@ -1,7 +1,7 @@
 """
 dynamic_watchlist_lib/config.py
 
-Centralized configuration for API keys, endpoints, and dynamic token loading.
+Centralized configuration for API keys and dynamic token loading.
 """
 
 import os
@@ -11,10 +11,6 @@ import gspread
 # Kite Connect credentials
 KITE_API_KEY = os.getenv("Zerodha_API_Key", "")
 KITE_API_SECRET = os.getenv("Zerodha_API_Secret", "")
-
-# FT News API configuration
-FT_NEWS_API_KEY = os.getenv("FT_News_API_Key", "")
-FT_NEWS_ENDPOINT = os.getenv("FT_News_Endpoint", "")
 
 # Google Sheet settings for dynamic Zerodha Access Token
 GSHEET_CREDENTIALS_JSON = os.getenv("GSHEET_CREDENTIALS_JSON", "")

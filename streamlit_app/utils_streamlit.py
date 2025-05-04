@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 
-def style_metrics(df: pd.DataFrame) -> pd.io.formats.style.Styler:
+def style_metrics(df: pd.DataFrame):
     """
     Apply styling to the metrics DataFrame:
     - Highlight volume surge rows
@@ -27,10 +27,10 @@ def style_metrics(df: pd.DataFrame) -> pd.io.formats.style.Styler:
     fmt = {col: '{:.2f}' for col in df.select_dtypes(include=['float']).columns}
 
     styler = df.style.format(fmt)
-    if 'Vol Surge' in df.columns:
-        styler = styler.applymap(highlight_surge, subset=['Vol Surge'])
-    if 'Sector Dev (%)' in df.columns:
-        styler = styler.applymap(color_sector, subset=['Sector Dev (%)'])
+    if 'Volume_Surge' in df.columns:
+        styler = styler.applymap(highlight_surge, subset=['Volume_Surge'])
+    if 'Sector_Dev(%)' in df.columns:
+        styler = styler.applymap(color_sector, subset=['Sector_Dev(%)'])
 
     return styler
 

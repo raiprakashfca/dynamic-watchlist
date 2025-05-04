@@ -11,6 +11,7 @@ from dynamic_watchlist_lib.data_fetcher import (
     fetch_latest_news,
     fetch_corporate_events,
 )
+import dynamic_watchlist_lib.config as config_module
 
 class DummyClient:
     def __init__(self):
@@ -41,9 +42,11 @@ class DummyClient:
 @pytest.fixture(autouse=True)
 def patch_kite_client(monkeypatch):
     dummy = DummyClient()
+    # Patch Kite client creation
     monkeypatch.setattr(df_module, "get_kite_client", lambda: dummy)
-    monkeypatch.setenv("FT_News_API_Key", "dummy")
-    monkeypatch.setenv("FT_News_Endpoint", "https://dummy")
+    # Stub out news API credentials in config
+    monkeypatch.setattr(config_module, "FT_NEWS_API_KEY", "dummy", raising=False)
+    monkeypatch.setattr(config_module, "FT_NEWS_ENDPOINT", "https://dummy", raising=False)
     return dummy
 
 def test_get_instrument_map():
@@ -69,6 +72,7 @@ def test_fetch_futures_oi_stub():
     assert oi == 1000
 
 def test_fetch_latest_news_stub(monkeypatch):
+    # Ensure FT_NEWS_API_KEY and ENDPOINT are set in config
     # Monkeypatch requests.get to return dummy structure
     class DummyResponse:
         status_code = 200
@@ -77,6 +81,7 @@ def test_fetch_latest_news_stub(monkeypatch):
     monkeypatch.setattr(df_module.requests, "get", lambda url, params, timeout: DummyResponse())
     news = fetch_latest_news(count=2)
     assert isinstance(news, list)
+    assert len(news) == 2
     assert news[0]["title"] == "News1"
 
 def test_fetch_corporate_events_stub():

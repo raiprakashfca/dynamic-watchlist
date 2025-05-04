@@ -23,15 +23,16 @@ def calculate_pivots(df: pd.DataFrame) -> dict:
     Calculate pivot point, support and resistance levels for the last row in df.
     Expects columns: ['open', 'high', 'low', 'close'].
     
+    Uses current row's open, high, and low: pivot = (open + high + low)/3.
     Returns a dict with keys: pivot, r1, r2, s1, s2.
     """
     if df.empty:
         return {'pivot': 0, 'r1': 0, 'r2': 0, 's1': 0, 's2': 0}
     last = df.iloc[-1]
+    op = last['open']
     high = last['high']
     low = last['low']
-    close = last['close']
-    pivot = (high + low + close) / 3
+    pivot = (op + high + low) / 3
     r1 = (2 * pivot) - low
     s1 = (2 * pivot) - high
     r2 = pivot + (high - low)

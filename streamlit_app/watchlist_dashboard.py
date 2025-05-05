@@ -1,6 +1,6 @@
 import streamlit as st
 
-# Set page config must be first Streamlit command
+# ─── Must be the very first Streamlit command ─────────────────────────────────
 st.set_page_config(page_title="Dynamic Watchlist", layout="wide")
 st.title("📊 Dynamic Watchlist Dashboard")
 
@@ -17,7 +17,7 @@ from dynamic_watchlist_lib import (
 )
 from dynamic_watchlist_lib.utils import now_ist
 
-# Sidebar for ticker selection
+# ─── Sidebar Inputs ────────────────────────────────────────────────────────────
 st.sidebar.header("Watchlist Settings")
 symbols = st.sidebar.text_area(
     "Enter NSE symbols (comma-separated)",
@@ -27,14 +27,14 @@ symbols = st.sidebar.text_area(
         "POWERGRID,SUNPHARMA,DIVISLAB,TECHM,HEROMOTOCO,HINDUNILVR,TATAPOWER,"
         "TITAN,BOSCHLTD,BHARATFORGE,GRASIM,APLAPOLLO,RECLTD,PFC,GLENMARK,TVSMOTOR"
     ),
-    height=200
+    height=200,
 )
 symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
 
 # Show last update time
 st.sidebar.write("Last update (IST):", now_ist().strftime("%Y-%m-%d %H:%M:%S"))
 
-# Build metrics table
+# ─── Build Metrics Table ───────────────────────────────────────────────────────
 rows = []
 for sym in symbol_list:
     try:
@@ -42,8 +42,8 @@ for sym in symbol_list:
         vwap = calculate_vwap(df)
         pivots = calculate_pivots(df)
         surge = detect_volume_surge(df)
-        dev = get_sector_deviation(sym)
-        oi = fetch_futures_oi(sym)
+        dev   = get_sector_deviation(sym)
+        oi    = fetch_futures_oi(sym)
 
         rows.append({
             "Symbol": sym,
@@ -59,4 +59,6 @@ for sym in symbol_list:
         rows.append({"Symbol": sym, "Error": str(e)})
 
 df_metrics = pd.DataFrame(rows)
+
+# ─── Render Table ─────────────────────────────────────────────────────────────
 display_metrics(df_metrics)

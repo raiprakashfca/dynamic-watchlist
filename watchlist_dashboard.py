@@ -1,6 +1,6 @@
 import streamlit as st
 
-# ─── Must be the very first Streamlit command ─────────────────────────────────
+# ─── FIRST STREAMLIT CALL ────────────────────────────────────────────────────────
 st.set_page_config(page_title="Dynamic Watchlist", layout="wide")
 st.title("📊 Dynamic Watchlist Dashboard")
 
@@ -22,43 +22,29 @@ st.sidebar.header("Watchlist Settings")
 symbols = st.sidebar.text_area(
     "Enter NSE symbols (comma-separated)",
     value=(
-        "ASIANPAINT,BAJAJ-AUTO,BANKBARODA,BPCL,CIPLA,COALINDIA,ICICIBANK,ITC,"
-        "JSWSTEEL,LT,MARUTI,ONGC,RELIANCE,SBIN,TCS,INFY,CDSL,DRREDDY,JUBLFOOD,"
-        "POWERGRID,SUNPHARMA,DIVISLAB,TECHM,HEROMOTOCO,HINDUNILVR,TATAPOWER,"
-        "TITAN,BOSCHLTD,BHARATFORGE,GRASIM,APLAPOLLO,RECLTD,PFC,GLENMARK,TVSMOTOR"
+        "ASIANPAINT,BAJAJ-AUTO,BANKBARODA,BPCL,...,TVSMOTOR"
     ),
     height=200,
 )
 symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
 
-# Show last update time
 st.sidebar.write("Last update (IST):", now_ist().strftime("%Y-%m-%d %H:%M:%S"))
 
-# ─── Build Metrics Table ───────────────────────────────────────────────────────
+# ─── Build & Display Metrics ────────────────────────────────────────────────────
 rows = []
 for sym in symbol_list:
     try:
         df = fetch_intraday_ohlc(sym)
-        vwap = calculate_vwap(df)
-        pivots = calculate_pivots(df)
-        surge = detect_volume_surge(df)
-        dev   = get_sector_deviation(sym)
-        oi    = fetch_futures_oi(sym)
-
         rows.append({
             "Symbol": sym,
-            "VWAP": round(vwap, 2),
-            "Pivot": round(pivots["pivot"], 2),
-            "R1": round(pivots["r1"], 2),
-            "S1": round(pivots["s1"], 2),
-            "Volume_Surge": surge,
-            "Sector_Dev(%)": round(dev, 2),
-            "Futures_OI": oi if oi is not None else "-",
+            "VWAP": round(calculate_vwap(df), 2),
+            **{k: round(v, 2) for k, v in calculate_pivots(df).items()},
+            "Volume_Surge": detect_volume_surge(df),
+            "Sector_Dev(%)": round(get_sector_deviation(sym), 2),
+            "Futures_OI": fetch_futures_oi(sym) or "-",
         })
     except Exception as e:
         rows.append({"Symbol": sym, "Error": str(e)})
 
 df_metrics = pd.DataFrame(rows)
-
-# ─── Render Table ─────────────────────────────────────────────────────────────
 display_metrics(df_metrics)
